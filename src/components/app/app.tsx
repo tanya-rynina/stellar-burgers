@@ -1,3 +1,5 @@
+import { fetchIngredients } from '@/services/ingredientsSlice';
+import { useDispatch } from '@/services/store';
 import {
   AppHeader,
   Modal,
@@ -16,6 +18,7 @@ import {
   ProfileOrders,
   NotFound404,
 } from '@pages';
+import { useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
 import type { ReactNode } from 'react';
@@ -52,7 +55,11 @@ const App = (): React.JSX.Element => {
   const location = useLocation();
   const state = location.state as TAppLocationState | null;
   const background = state?.background;
+  const dispatch = useDispatch();
 
+  useEffect(() => {
+    void dispatch(fetchIngredients());
+  }, [dispatch]);
   return (
     <div className={styles.app}>
       <AppHeader />
