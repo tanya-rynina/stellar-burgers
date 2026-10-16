@@ -1,35 +1,55 @@
+import {
+  clearConstructor,
+  selectConstructorState,
+  selectTotalPrice,
+} from '@/services/constructorSlice';
+import {
+  clearOrder,
+  createOrderThunk,
+  selectOrderModalData,
+  selectOrderRequest,
+} from '@/services/orderSlice';
+import { useDispatch, useSelector } from '@/services/store';
+import { selectUser } from '@/services/userSlice';
 import { BurgerConstructorUI } from '@ui';
-import { useMemo } from 'react';
-
-import type { TConstructorIngredient, TConstructorState, TOrder } from '@utils-types';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export const BurgerConstructor = (): React.JSX.Element | null => {
-  /** TODO: Взять переменные constructorItems, orderRequest и orderModalData из стора */
-  const constructorItems: TConstructorState = {
-    bun: null,
-    ingredients: [],
-  };
-  const orderRequest = false;
-  const orderModalData: TOrder | null = null;
+  const constructorItems = useSelector(selectConstructorState);
+  const price = useSelector(selectTotalPrice);
+  const orderRequest = useSelector(selectOrderRequest);
+  const orderModalData = useSelector(selectOrderModalData);
+  const user = useSelector(selectUser);
+
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const onOrderClick = (): void => {
     if (!constructorItems.bun || orderRequest) return;
-    // TODO: Оформить заказ
+
+    if (!user) {
+      void navigate('/login', { state: { from: location } });
+      return;
+    }
+
+    const ingredientIds = [
+      constructorItems.bun._id,
+      ...constructorItems.ingredients.map((item) => item._id),
+      constructorItems.bun._id,
+    ];
+
+    void dispatch(createOrderThunk(ingredientIds))
+      .unwrap()
+      .then(() => {
+        dispatch(clearConstructor());
+      })
+      .catch(() => undefined);
   };
 
   const closeOrderModal = (): void => {
-    // TODO: Закрыть модальное окно и сбросить заказ
+    dispatch(clearOrder());
   };
-
-  const price = useMemo(
-    () =>
-      (constructorItems.bun ? constructorItems.bun.price * 2 : 0) +
-      constructorItems.ingredients.reduce(
-        (s: number, v: TConstructorIngredient) => s + v.price,
-        0
-      ),
-    [constructorItems]
-  );
 
   return (
     <BurgerConstructorUI

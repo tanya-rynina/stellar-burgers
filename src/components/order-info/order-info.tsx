@@ -1,23 +1,57 @@
+import { selectFeedOrders } from '@/services/feedSlice';
+import { selectIngredients } from '@/services/ingredientsSlice';
+import {
+  clearCurrentOrder,
+  fetchOrderByNumber,
+  selectCurrentOrder,
+  selectCurrentOrderLoading,
+} from '@/services/orderSlice';
+import { selectProfileOrders } from '@/services/profileOrdersSlice';
+import { useDispatch, useSelector } from '@/services/store';
 import { Preloader, OrderInfoUI } from '@ui';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 
 import type { TIngredient } from '@utils-types';
 
 export const OrderInfo = (): React.JSX.Element => {
-  /** TODO: взять переменные orderData и ingredients из стора */
-  const orderData = {
-    createdAt: '',
-    ingredients: [],
-    _id: '',
-    status: '',
-    name: '',
-    updatedAt: 'string',
-    number: 0,
-  };
+  const { number } = useParams<{ number: string }>();
+  const orderNumber = Number(number);
 
-  const ingredients: TIngredient[] = [];
+  const feedOrders = useSelector(selectFeedOrders);
+  const profileOrders = useSelector(selectProfileOrders);
+  const currentOrder = useSelector(selectCurrentOrder);
+  const isCurrentOrderLoading = useSelector(selectCurrentOrderLoading);
+  const ingredients = useSelector(selectIngredients);
 
-  /* Готовим данные для отображения */
+  const dispatch = useDispatch();
+
+  /** Ищем заказ в ленте или в истории — там данные уже есть после REST-запросов */
+  const orderFromStore = useMemo(
+    () =>
+      feedOrders.find((order) => order.number === orderNumber) ??
+      profileOrders.find((order) => order.number === orderNumber) ??
+      null,
+    [feedOrders, profileOrders, orderNumber]
+  );
+
+  /** Если в сторе нет — запрашиваем с сервера по номеру */
+  useEffect(() => {
+    if (!orderFromStore && Number.isFinite(orderNumber)) {
+      void dispatch(fetchOrderByNumber(orderNumber));
+    }
+  }, [dispatch, orderFromStore, orderNumber]);
+
+  /** Чистим currentOrder при закрытии модалки (размонтирование) */
+  useEffect(
+    () => (): void => {
+      dispatch(clearCurrentOrder());
+    },
+    [dispatch]
+  );
+
+  const orderData = orderFromStore ?? currentOrder;
+
   const orderInfo = useMemo(() => {
     if (!orderData || !ingredients.length) return null;
 
@@ -30,15 +64,11 @@ export const OrderInfo = (): React.JSX.Element => {
         if (!acc[item]) {
           const ingredient = ingredients.find((ing) => ing._id === item);
           if (ingredient) {
-            acc[item] = {
-              ...ingredient,
-              count: 1,
-            };
+            acc[item] = { ...ingredient, count: 1 };
           }
         } else {
           acc[item].count++;
         }
-
         return acc;
       },
       {}
@@ -58,6 +88,9 @@ export const OrderInfo = (): React.JSX.Element => {
   }, [orderData, ingredients]);
 
   if (!orderInfo) {
+    if (isCurrentOrderLoading || !orderData) {
+      return <Preloader />;
+    }
     return <Preloader />;
   }
 

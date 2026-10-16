@@ -1,58 +1,100 @@
+import { useDispatch, useSelector } from '@/services/store';
+import {
+  clearError,
+  selectUser,
+  selectUserError,
+  updateUserThunk,
+} from '@/services/userSlice';
 import { ProfileUI } from '@ui-pages';
-import { type SyntheticEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+
+import type { ChangeEvent, SyntheticEvent } from 'react';
+
+type TFormValue = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+const INITIAL_FORM_VALUE: TFormValue = {
+  name: '',
+  email: '',
+  password: '',
+};
 
 export const Profile = (): React.JSX.Element => {
-  /** TODO: Взять переменную из стора */
-  const user = {
-    name: '',
-    email: '',
-  };
+  const user = useSelector(selectUser);
+  const updateUserError = useSelector(selectUserError);
 
-  const [formValue, setFormValue] = useState({
-    name: user.name,
-    email: user.email,
-    password: '',
-  });
+  const dispatch = useDispatch();
+
+  const [formValue, setFormValue] = useState<TFormValue>(INITIAL_FORM_VALUE);
 
   useEffect(() => {
-    setFormValue((prevState) => ({
-      ...prevState,
-      name: user?.name || '',
-      email: user?.email || '',
-    }));
+    if (user) {
+      setFormValue({
+        name: user.name,
+        email: user.email,
+        password: '',
+      });
+    }
   }, [user]);
 
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+
   const isFormChanged =
-    formValue.name !== user?.name ||
-    formValue.email !== user?.email ||
-    !!formValue.password;
+    formValue.name !== (user?.name ?? '') ||
+    formValue.email !== (user?.email ?? '') ||
+    formValue.password !== '';
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = e.target;
+    setFormValue((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = (e: SyntheticEvent): void => {
     e.preventDefault();
+
+    if (!isFormChanged) return;
+
+    const payload: Partial<TFormValue> = {
+      name: formValue.name,
+      email: formValue.email,
+    };
+
+    if (formValue.password) {
+      payload.password = formValue.password;
+    }
+
+    void dispatch(updateUserThunk(payload))
+      .unwrap()
+      .then(() => {
+        setFormValue((prev) => ({ ...prev, password: '' }));
+      })
+      .catch(() => undefined);
   };
 
   const handleCancel = (e: SyntheticEvent): void => {
     e.preventDefault();
-    setFormValue({
-      name: user.name,
-      email: user.email,
-      password: '',
-    });
-  };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setFormValue((prevState) => ({
-      ...prevState,
-      [e.target.name]: e.target.value,
-    }));
+    if (user) {
+      setFormValue({
+        name: user.name,
+        email: user.email,
+        password: '',
+      });
+    }
   };
 
   return (
     <ProfileUI
       formValue={formValue}
       isFormChanged={isFormChanged}
-      handleCancel={handleCancel}
+      updateUserError={updateUserError ?? undefined}
       handleSubmit={handleSubmit}
+      handleCancel={handleCancel}
       handleInputChange={handleInputChange}
     />
   );
