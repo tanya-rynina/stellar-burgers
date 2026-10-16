@@ -1,5 +1,6 @@
 import { fetchIngredients } from '@/services/ingredientsSlice';
 import { useDispatch } from '@/services/store';
+import { getUserThunk, init } from '@/services/userSlice';
 import {
   AppHeader,
   Modal,
@@ -59,7 +60,15 @@ const App = (): React.JSX.Element => {
 
   useEffect(() => {
     void dispatch(fetchIngredients());
+
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      void dispatch(getUserThunk());
+    } else {
+      dispatch(init());
+    }
   }, [dispatch]);
+
   return (
     <div className={styles.app}>
       <AppHeader />
