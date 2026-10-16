@@ -136,6 +136,9 @@ const userSlice = createSlice({
     init: (state) => {
       state.isAuthChecked = true;
     },
+    clearError: (state) => {
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -201,11 +204,37 @@ const userSlice = createSlice({
       .addCase(updateUserThunk.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload ?? 'Не удалось обновить профиль';
+      })
+
+      // FORGOT PASSWORD
+      .addCase(forgotPasswordThunk.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(forgotPasswordThunk.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(forgotPasswordThunk.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload ?? 'Не удалось отправить письмо';
+      })
+
+      // RESET PASSWORD
+      .addCase(resetPasswordThunk.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resetPasswordThunk.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(resetPasswordThunk.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload ?? 'Не удалось сохранить новый пароль';
       });
   },
 });
 
-export const { init } = userSlice.actions;
+export const { init, clearError } = userSlice.actions;
 
 export const selectUser = (state: RootState): TUser | null => state.user.user;
 export const selectIsAuthChecked = (state: RootState): boolean =>
